@@ -1,8 +1,5 @@
 # CLIUniApp – University Self-Enrolment System
 
-University of Technology Sydney
-**32555 Fundamentals of Software Development – Assessment 1 Part 2 & 3**
-
 A self-enrolment system for a local university, providing two
 interactive subsystems (one for students, one for admins) plus a
 Tk-based GUI version for registered students.
