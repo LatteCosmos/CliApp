@@ -18,16 +18,17 @@ Admin System：管理员子系统的 c/g/p/r/s/x 菜单。
 - "< Nothing to Display >" 缩进是 16 个空格（嵌套缩进）
 - 按 grade 分组：每行 "P  --> [Alen Jones :: 762740 --> GRADE:  P - MARK: 63.50]"
   注意 grade 是左对齐 2 字符宽（{:<2}），所以 P 后面有一个空格再加 " --> "
-- 分组顺序：按学生在 db 里的出现顺序（保证测试时和 sample 一致）
+- 分组顺序：按 grade 等级从低到高排序（Z → P → C → D → HD），
+  和 Brief 第 6 页 Sample I/O 一致（P 在 C 前面）
 """
 
 from __future__ import annotations
 
-from collections import defaultdict
 from typing import Dict, List
 
 from data.i_database import IDatabase
 from model.student import Student
+from model.subject import Subject
 from util import color
 
 
@@ -93,36 +94,50 @@ class AdminSystem:
     # =====================================================================
     def _group_by_grade(self) -> None:
         """
-        Sample I/O：
+        Sample I/O（Brief 第 6 页）：
             Admin System (c/g/p/r/s/x): g
             Grade Grouping
             P  --> [Alen Jones :: 762740 --> GRADE:  P - MARK: 63.50]
             C  --> [John Smith :: 673358 --> GRADE:  C - MARK: 68.25]
 
-        【关键修复】sample 中是 P 在 C 前面（数据库里 Alen 是后注册的，
-        但他先选满了课 -> 平均分先算出来 -> 在 grade_groups 里先出现）。
-        我们用 dict 保留插入顺序（Python 3.7+ 默认行为），不用预设的高低顺序。
+        【输出顺序的关键】
+        Sample 中 John 先注册（已存在）, Alen 后注册。但 group 输出
+        是 P 先 C 后。这说明 grade group 的输出顺序是按【等级从低到高】
+        而不是按数据库插入顺序。等级顺序：Z (<50) → P (50-64) → C (65-74)
+        → D (75-84) → HD (≥85)。
 
-        没数据时显示 "< Nothing to Display >"。
+        组内学生的顺序仍然按数据库插入顺序（先注册的先出现在组里）。
+
+        没数据时显示 "< Nothing to Display >"（16 空格嵌套缩进）。
         """
         print(INDENT + color.yellow("Grade Grouping"))
 
-        # 数据库里没有学生 -> Nothing to Display
         students = self._db.load()
         if not students:
             print(NESTED_INDENT + "< Nothing to Display >")
             return
 
-        # 用 dict 而不是 defaultdict，从而能用 setdefault 保持"首次出现顺序"
+        # 按 grade 分组——dict 保持插入顺序，组内自动按数据库顺序
         groups: Dict[str, List[Student]] = {}
         for s in students:
             grade = s.overall_grade()
             groups.setdefault(grade, []).append(s)
 
-        # 按学生在 db 里的出现顺序遍历 grade key——保证输出顺序和 sample 一致
-        for grade, members in groups.items():
+        # 按等级从低到高排序输出（Z → P → C → D → HD）。
+        # 用 Subject 类常量字符串作为权威定义，未来改 grade 名称只改一处。
+        GRADE_ORDER = [
+            Subject.GRADE_Z,
+            Subject.GRADE_P,
+            Subject.GRADE_C,
+            Subject.GRADE_D,
+            Subject.GRADE_HD,
+        ]
+        for grade in GRADE_ORDER:
+            if grade not in groups:
+                continue   # 没人在这个等级 → 跳过这一行
+            members = groups[grade]
             inner = ", ".join(m.grade_line() for m in members)
-            # {grade:<2} 让 P 变成 "P "（占 2 字符），HD 占用本身就是 2 字符
+            # {grade:<2} 让 P 变成 "P "（占 2 字符），HD 本身就是 2 字符
             print(INDENT + f"{grade:<2} --> [{inner}]")
 
     # =====================================================================

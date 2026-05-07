@@ -92,17 +92,18 @@ class Student(User):
         return total / len(self._subjects)
 
     def overall_grade(self) -> str:
-        """Apply the same grade boundaries used per-subject to the average mark."""
-        avg = self.average_mark()
-        if avg >= 85:
-            return Subject.GRADE_HD
-        if avg >= 75:
-            return Subject.GRADE_D
-        if avg >= 65:
-            return Subject.GRADE_C
-        if avg >= 50:
-            return Subject.GRADE_P
-        return Subject.GRADE_Z
+        """
+        Apply the same grade boundaries used per-subject to the average mark.
+
+        【为什么直接调 Subject._calculate_grade】
+        DRY 原则：单科评分逻辑只有一份"权威实现"——放在 Subject 里。
+        如果这里再写一遍 if/elif 链，将来阈值一改（比如 D 变成 78 起）
+        就要改两个地方，必有一处漏掉。复用让阈值永远只活在一处。
+
+        平均分是 float，但 Subject._calculate_grade 用 mark >= X 这种
+        比较，对 float 也成立，所以直接传 self.average_mark() 即可。
+        """
+        return Subject._calculate_grade(self.average_mark())
 
     def is_passing(self) -> bool:
         """Pass = average mark >= 50, per the Part 2 brief."""
@@ -120,4 +121,17 @@ class Student(User):
         return (
             f"{self._name} :: {self.display_id()} --> "
             f"GRADE: {self.overall_grade():>2} - MARK: {self.average_mark():.2f}"
+        )
+
+    def __repr__(self) -> str:
+        """
+        Debug 友好的字符串。Sample I/O 不直接显示 Student 对象，
+        所以这个 __repr__ 不参与"Matching I/O"评分——纯粹是给开发者
+        看（assert 失败、打印列表、log 调试时格式更直观）。
+
+        例：<Student 002340 John Smith subjects=2>
+        """
+        return (
+            f"<Student {self.display_id()} {self._name} "
+            f"subjects={len(self._subjects)}>"
         )

@@ -96,14 +96,20 @@ class Subject:
 
     def __repr__(self) -> str:
         """
-        当我们 print(subject) 或 print(repr(subject)) 时调用这个方法。
-        样例 I/O 期望的格式：
-            [ Subject::541 -- mark = 55 -- grade =  P ]
-            [ Subject::097 -- mark = 85 -- grade = HD ]
-        注意 grade 是右对齐 2 个字符宽（{:>2}），让 P/C/D 和 HD 对齐成两列。
+        当 print(subject) 或 repr(subject) 时调用这个方法。
+
+        【Sample I/O 实际格式（Brief 第 5 页）】
+            [ Subject::541 -- mark = 55 -- grade =   P ]   ← `=` 与 P 之间 3 个空格
+            [ Subject::097 -- mark = 85 -- grade =  HD ]   ← `=` 与 HD 之间 2 个空格
+
+        【为什么是 {:>3} 不是 {:>2}】
+        字面量 "= " 自带 1 个尾随空格。再用右对齐 3 字符宽:
+            P  -> "  P"  (前面补 2 空格) → 拼出来 "=   P"  (3 空格)
+            HD -> " HD"  (前面补 1 空格) → 拼出来 "=  HD"  (2 空格)
+        这样 P/HD 在视觉上的 `]` 收尾右对齐到同一列，且匹配 Sample 字面输出。
         """
         return (
             f"[ Subject::{self.display_id()} "
             f"-- mark = {self._mark} "
-            f"-- grade = {self._grade:>2} ]"
+            f"-- grade = {self._grade:>3} ]"
         )

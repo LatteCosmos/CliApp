@@ -55,7 +55,10 @@ class StudentSystem:
 
         student = self._service.authenticate(email, password)
         if student is None:
-            print(INDENT + color.yellow("Student does not exist"))
+            # Sample I/O (Brief 第 4、7 页) 把这条消息显示为红色——
+            # 它表示登录失败（账号不存在或密码错），属于"错误类"消息，
+            # 和"Incorrect email or password format"同一颜色级别。
+            print(INDENT + color.red("Student does not exist"))
             return
 
         # Hand control over to the Course Menu.

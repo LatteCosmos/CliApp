@@ -22,13 +22,15 @@ class SubjectDisplayTests(unittest.TestCase):
         self.assertEqual("001", Subject(1, 50).display_id())
 
     def test_subject_repr_matches_sample(self):
-        # Sample: [ Subject::541 -- mark = 55 -- grade =  P ]
+        # Sample I/O (Brief 第 5 页) 实际格式（注意空格数）：
+        #   [ Subject::541 -- mark = 55 -- grade =   P ]   ← 3 spaces
+        #   [ Subject::097 -- mark = 85 -- grade =  HD ]   ← 2 spaces
+        # 这是 {:>3} 右对齐 3 字符宽配合字面量 "= " 的结果
         s = Subject(541, 55)
-        self.assertEqual("[ Subject::541 -- mark = 55 -- grade =  P ]", repr(s))
+        self.assertEqual("[ Subject::541 -- mark = 55 -- grade =   P ]", repr(s))
 
-        # HD 占 2 字符宽，前面没空格
         s2 = Subject(97, 85)
-        self.assertEqual("[ Subject::097 -- mark = 85 -- grade = HD ]", repr(s2))
+        self.assertEqual("[ Subject::097 -- mark = 85 -- grade =  HD ]", repr(s2))
 
 
 class StudentDisplayTests(unittest.TestCase):
@@ -76,6 +78,21 @@ class StudentDisplayTests(unittest.TestCase):
             "Top Star :: 000001 --> GRADE: HD - MARK: 90.00",
             s.grade_line(),
         )
+
+    def test_overall_grade_uses_subject_thresholds(self):
+        # 锁定 Student.overall_grade 复用 Subject._calculate_grade 的行为：
+        # 阈值改一处会同时影响这两个方法
+        s = Student(1, "X Y", "x.y@university.com", "Helloworld123")
+        s.enrol(Subject(1, 50))   # P 边界
+        self.assertEqual("P", s.overall_grade())
+        s2 = Student(2, "A B", "a.b@university.com", "Helloworld123")
+        s2.enrol(Subject(1, 49))  # 刚好低于 P
+        self.assertEqual("Z", s2.overall_grade())
+
+    def test_student_repr_is_debug_friendly(self):
+        # __repr__ 不参与 Sample I/O 匹配，但要显示关键字段方便 debug
+        s = Student(2340, "Demo Person", "demo.person@university.com", "Helloworld123")
+        self.assertEqual("<Student 002340 Demo Person subjects=0>", repr(s))
 
 
 if __name__ == "__main__":
