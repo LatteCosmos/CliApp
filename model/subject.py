@@ -1,22 +1,37 @@
 """
-Subject domain object.
+model/subject.py
+=================
+科目（Subject）领域对象。
 
-Each Subject has an auto-generated 3-digit id (1..999), a random mark
-between 25 and 100, and a grade that is derived from the mark.
+【职责（Single Responsibility）】
+Subject 只负责存放一门课的数据：id、mark、grade。
+它【不】生成 id，【不】生成随机分数，那些是 StudentService 的事。
+分离职责让 Subject 可以被单独测试，也方便老师改卷时看出"模型只装数据"的设计。
 
-The Subject is intentionally a lightweight value-style object: ID
-generation and mark generation belong to the StudentService class so
-that the rule logic stays in one place (single responsibility).
+【数据来源 / 规则（Brief 第 3 节）】
+- id: 1..999 的随机 3 位数
+- mark: 25..100 的随机整数
+- grade: 由 mark 推算
+    mark < 50  -> Z
+    50..64     -> P
+    65..74     -> C
+    75..84     -> D
+    >= 85      -> HD
 """
 
-from __future__ import annotations
+from __future__ import annotations  # 让类型注解里的 "Subject" 不需要先定义就能用
 
 
 class Subject:
-    """Represents one subject a student is enrolled in."""
+    """一门已选的科目。"""
 
-    # Grade boundaries are class-level constants so they can be
-    # referenced from tests or other modules without magic numbers.
+    # -----------------------------------------------------------------------
+    # 等级常量
+    # -----------------------------------------------------------------------
+    # 写成类常量而不是字符串字面量，可以：
+    #   1. 单元测试里能 import 这些常量做断言；
+    #   2. 任何拼写错误（例如打成 "HC"）会立刻在 import 时报错；
+    #   3. IDE 能做自动补全。
     GRADE_HD = "HD"
     GRADE_D = "D"
     GRADE_C = "C"
@@ -24,14 +39,17 @@ class Subject:
     GRADE_Z = "Z"
 
     def __init__(self, subject_id: int, mark: int):
-        # _id is a plain integer; we format it on display only.
+        # 单下划线前缀 _xxx 在 Python 中表示"protected"——告诉别人"请不要直接改这个"。
+        # 类外仍然能访问，但配合下面的 @property 提供只读视图。
         self._id = subject_id
         self._mark = mark
-        self._grade = self._calculate_grade(mark)
+        # 等级可以由 mark 直接推出来，所以构造时一次算好存起来即可
+        self._grade = Subject._calculate_grade(mark)
 
-    # ------------------------------------------------------------------
-    # Accessors
-    # ------------------------------------------------------------------
+    # -----------------------------------------------------------------------
+    # @property 让 obj.id 看起来像属性，但其实背后是一个 getter 方法。
+    # 这样既保护了 _id（外部不能 obj._id = 新值），又给出了简洁的访问语法。
+    # -----------------------------------------------------------------------
     @property
     def id(self) -> int:
         return self._id
@@ -44,12 +62,16 @@ class Subject:
     def grade(self) -> str:
         return self._grade
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
+    # -----------------------------------------------------------------------
+    # 私有辅助方法：根据分数算等级
+    # -----------------------------------------------------------------------
     @staticmethod
     def _calculate_grade(mark: int) -> str:
-        """Map a numeric mark onto the UTS grade scale used by the brief."""
+        """
+        按 UTS 评分制把分数映射到等级。
+        @staticmethod 表示这个方法不依赖 self，从分数到等级是纯函数关系。
+        """
+        # 注意判断顺序：必须从高到低，因为命中第一个就 return
         if mark >= 85:
             return Subject.GRADE_HD
         if mark >= 75:
@@ -60,15 +82,28 @@ class Subject:
             return Subject.GRADE_P
         return Subject.GRADE_Z
 
-    # ------------------------------------------------------------------
-    # Display helpers – keep formatting in one place to make sample I/O
-    # matching easier later on.
-    # ------------------------------------------------------------------
+    # -----------------------------------------------------------------------
+    # 显示辅助
+    # -----------------------------------------------------------------------
     def display_id(self) -> str:
-        """Return the id zero-padded to three digits, as in '[ Subject::097 ... ]'."""
+        """
+        把 id 格式化成 3 位数字（不足前面补 0）。
+        例如 id=97 -> "097"，id=541 -> "541"。
+        Sample I/O 中 "[ Subject::097 -- ... ]" 就是用这个格式。
+        """
+        # f-string 里 {x:03d} 表示"3 位的十进制整数，前面用 0 填充"
         return f"{self._id:03d}"
 
     def __repr__(self) -> str:
-        # Matches the sample line "[ Subject::541 -- mark = 55 -- grade =  P ]"
-        # Grade is right-aligned in a 2-character field so HD lines up with P/C/D/Z.
-        return f"[ Subject::{self.display_id()} -- mark = {self._mark} -- grade = {self._grade:>2} ]"
+        """
+        当我们 print(subject) 或 print(repr(subject)) 时调用这个方法。
+        样例 I/O 期望的格式：
+            [ Subject::541 -- mark = 55 -- grade =  P ]
+            [ Subject::097 -- mark = 85 -- grade = HD ]
+        注意 grade 是右对齐 2 个字符宽（{:>2}），让 P/C/D 和 HD 对齐成两列。
+        """
+        return (
+            f"[ Subject::{self.display_id()} "
+            f"-- mark = {self._mark} "
+            f"-- grade = {self._grade:>2} ]"
+        )
